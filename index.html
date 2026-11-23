@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d1d">
+  <meta name="description" content="A storm-lit lyric animation for Ako ang Bagyo by SHEAN.">
+  <title>Ako ang Bagyo — SHEAN</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #090d1d;
+      --glass: rgba(10, 14, 30, .62);
+      --edge: rgba(221, 229, 255, .18);
+      --soft: #dce4fa;
+      --muted: #9ba8c9;
+      --rose: #ff789f;
+      --gold: #fff0b3;
+      --violet: #c7a2ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      background: var(--ink);
+      color: var(--soft);
+      font-family: Montserrat, "Segoe UI", system-ui, sans-serif;
+    }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .vignette {
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 52%, transparent 20%, rgba(3, 5, 15, .24) 78%, rgba(2, 4, 12, .66));
+    }
+    .topbar {
+      position: fixed; z-index: 2; top: clamp(18px, 4vh, 42px); left: clamp(18px, 5vw, 72px); right: clamp(18px, 5vw, 72px);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+      pointer-events: none;
+    }
+    .brand { text-shadow: 0 2px 24px rgba(0,0,0,.7); }
+    .eyebrow { color: #c4b6dc; font-size: 10px; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; }
+    h1 { margin: 8px 0 0; color: #f8f2ff; font-size: clamp(20px, 3vw, 34px); font-weight: 600; letter-spacing: .015em; }
+    .artist { margin-top: 5px; color: #b5bed4; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+    .live {
+      display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--edge); border-radius: 999px;
+      background: rgba(9, 13, 29, .38); color: #d4dbed; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; backdrop-filter: blur(12px);
+    }
+    .live i { width: 6px; height: 6px; border-radius: 50%; background: #ff789f; box-shadow: 0 0 12px #ff789f; }
+    .controls {
+      position: fixed; z-index: 2; left: clamp(18px, 5vw, 72px); right: clamp(18px, 5vw, 72px); bottom: clamp(18px, 4vh, 42px);
+      display: grid; grid-template-columns: auto auto minmax(70px, 1fr) auto; align-items: center; gap: 12px;
+      padding: 12px; border: 1px solid var(--edge); border-radius: 18px; background: var(--glass); box-shadow: 0 18px 70px rgba(0,0,0,.34); backdrop-filter: blur(18px);
+    }
+    button {
+      appearance: none; border: 1px solid rgba(230, 232, 255, .23); border-radius: 12px; padding: 11px 16px;
+      color: #f8f4ff; background: rgba(255,255,255,.07); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    button:hover { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.44); }
+    button:active { transform: scale(.98); }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
+    #play { min-width: 112px; border-color: rgba(255, 120, 159, .68); background: linear-gradient(135deg, rgba(255, 120, 159, .25), rgba(176, 125, 255, .22)); }
+    #play:hover { background: linear-gradient(135deg, rgba(255, 120, 159, .4), rgba(176, 125, 255, .34)); }
+    #restart { padding-inline: 13px; color: #cbd4eb; }
+    input[type="range"] { width: 100%; accent-color: #ff8aac; cursor: pointer; }
+    .clock { min-width: 94px; text-align: right; color: #c0c9df; font-variant-numeric: tabular-nums; font-size: 11px; }
+    .hint {
+      position: fixed; z-index: 1; left: 50%; bottom: 104px; width: min(560px, calc(100vw - 36px)); transform: translateX(-50%);
+      text-align: center; color: rgba(224, 229, 244, .72); font-size: 11px; letter-spacing: .03em; text-shadow: 0 2px 12px #000; pointer-events: none;
+    }
+    .hint strong { color: #ffd0dc; font-weight: 650; }
+    @media (max-width: 560px) {
+      .controls { grid-template-columns: 1fr 1fr auto; gap: 8px; padding: 9px; }
+      #play, #restart { padding: 10px 8px; min-width: 0; }
+      .clock { min-width: 68px; grid-column: 3; grid-row: 1; }
+      input[type="range"] { grid-column: 1 / -1; grid-row: 2; }
+      .hint { bottom: 110px; font-size: 10px; }
+      .live { font-size: 0; padding: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="Animated storm and lyrics"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="eyebrow">A storm of feeling</div>
+      <h1>Ako ang Bagyo</h1>
+      <div class="artist">SHEAN</div>
+    </div>
+    <div class="live"><i></i> lyric visualizer</div>
+  </header>
+  <div class="hint">For audio alignment, press play at <strong>1:48.8</strong> into the song · Space to pause</div>
+  <nav class="controls" aria-label="Animation controls">
+    <button id="play" type="button">▶ Play</button>
+    <button id="restart" type="button" title="Restart animation">↺ Restart</button>
+    <input id="seek" type="range" min="0" max="68.2" step="0.1" value="0" aria-label="Seek through the lyric animation">
+    <div class="clock"><span id="elapsed">0:00</span> / <span id="duration">1:08</span></div>
+  </nav>
+  <script>
+  (() => {
+    "use strict";
+    const canvas = document.querySelector("#scene");
+    const ctx = canvas.getContext("2d");
+    const playButton = document.querySelector("#play");
+    const restartButton = document.querySelector("#restart");
+    const seek = document.querySelector("#seek");
+    const elapsedLabel = document.querySelector("#elapsed");
+    const durationLabel = document.querySelector("#duration");
+    const TAU = Math.PI * 2;
+    const transparent = "rgba(0,0,0,0)";
+    const palette = {
+      text: "#f7f0ff", shadow: "#100817", bagyo: "#fff0b3", ako: "#f0d9ff",
+      yero: "#f0f4ff", matakot: "#ffc0b8", tatangayin: "#b9f4f0",
+      kulimlim: "#ded5ff", masaya: "#ffc0d8", niyo: "#ffc0d8"
+    };
+    const emphasis = {
+      bagyo: { color: palette.bagyo, glow: "#ff7599", scale: 1.7, event: "strike" },
+      ako: { color: palette.ako, glow: "#b47cff", scale: 1.22 },
+      yero: { color: palette.yero, glow: "#91a9d8", scale: 1.35, event: "sheets" },
+      matakot: { color: palette.matakot, glow: "#ff596f", scale: 1.2 },
+      tatangayin: { color: palette.tatangayin, glow: "#45c9d0", scale: 1.24, event: "gust" },
+      kulimlim: { color: palette.kulimlim, glow: "#8c7bce", scale: 1.18 },
+      masaya: { color: palette.masaya, glow: "#ff5e9b", scale: 1.18 },
+      niyo: { color: palette.niyo, glow: "#ff5e9b", scale: 1.08 },
+      gigibain: { color: "#ffd0a6", glow: "#ff805f", scale: 1.28, event: "sheets" }
+    };
+    const lines = [
+      [0.00, "Tinatali mo ko sa pag asa"],
+      [5.67, "BAGYONG EDSON"],
+      [7.44, "Matakot na kayo"],
+      [12.31, "Ako, ako, ako ang bagyoooo"],
+      [17.05, "Kulimlim ng langit sainyong dalawa"],
+      [22.61, "Bulong ko sa hangin sana di kayo masaya"],
+      [28.16, "Sa tibay ng bahay na titirhan nyo"],
+      [34.10, "Tatangayin ko bawat yero"],
+      [38.19, "Dilim ng paligid buhos ng emosyon"],
+      [44.19, "Tunog ng pag-ibig sa sama ng panahon"],
+      [50.19, "Sa tibay ng bahay na titirhan niyo"],
+      [55.19, "Gigibain ko mga pader niyo"],
+      [60.19, "Dahil ako, ako ang bagyo"]
+    ].map(([start, text], i, all) => ({
+      start, text, slot: i + 1 < all.length ? all[i + 1][0] - start : 8,
+      words: text.split(/\s+/), zone: [0.31, 0.67, 0.42, 0.58][i % 4], layout: []
+    }));
+    const totalDuration = 68.2;
+    durationLabel.textContent = formatTime(totalDuration);
+    seek.max = String(totalDuration);
+
+    let width = 0, height = 0, dpr = 1, elapsed = 0, playing = false, lastFrame = 0, sceneTime = 0;
+    let clouds = [], rain = [], bolts = [], debris = [], hearts = [], pulses = [], gusts = [];
+    let nextStrike = 2.2, wind = 55, flash = 0;
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+    const smooth = p => { p = clamp(p); return p * p * (3 - 2 * p); };
+    const cubicOut = p => 1 - Math.pow(1 - clamp(p), 3);
+    const norm = s => s.toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+    const lerpColor = (a, b, t) => {
+      const parse = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+      const A = parse(a), B = parse(b), q = clamp(t);
+      return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * q).toString(16).padStart(2, "0")).join("");
+    };
+    function formatTime(seconds) {
+      const n = Math.max(0, Math.floor(seconds));
+      return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
+    }
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth; height = window.innerHeight;
+      canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      clouds = Array.from({ length: Math.max(9, Math.ceil(width / 145)) }, () => ({
+        x: rand(-width * .1, width * 1.1), y: rand(-height * .12, height * .18),
+        rx: rand(width * .075, width * .17), ry: rand(35, 100), speed: rand(7, 23), tone: rand(0, 1)
+      }));
+      rain = Array.from({ length: Math.round(clamp(width * height / 9500, 100, 300)) }, () => ({
+        x: rand(-width, width), y: rand(-height, height), speed: rand(470, 1450),
+        len: rand(10, 36), alpha: rand(.1, .53), layer: rand(.35, 1.2)
+      }));
+      for (const line of lines) layoutLine(line);
+    }
+    function layoutLine(line) {
+      const base = clamp(width / 34, 24, 54);
+      const entries = line.words.map((word, i) => {
+        const key = emphasis[norm(word)];
+        const size = base * (key?.scale || rand(.92, 1.05));
+        ctx.font = `${key ? 700 : 550} italic ${size}px Montserrat, "Segoe UI", sans-serif`;
+        return { word, i, key, size, w: ctx.measureText(word).width };
+      });
+      const gap = Math.max(10, base * .42), maxWidth = width * .84;
+      let rows = [], row = [], rowWidth = 0;
+      for (const item of entries) {
+        const nextWidth = rowWidth + (row.length ? gap : 0) + item.w;
+        if (row.length && nextWidth > maxWidth) { rows.push(row); row = []; rowWidth = 0; }
+        rowWidth += (row.length ? gap : 0) + item.w; row.push(item);
+      }
+      if (row.length) rows.push(row);
+      const lineHeight = base * 1.55;
+      rows.forEach((items, r) => {
+        const total = items.reduce((sum, item) => sum + item.w, 0) + gap * (items.length - 1);
+        let x = (width - total) / 2;
+        for (const item of items) {
+          item.x = x + item.w / 2;
+          item.y = height * line.zone + (r - (rows.length - 1) / 2) * lineHeight;
+          item.t0 = line.start + .18 + item.i * Math.min(.68, Math.max(.14, (line.slot - 2.4) / Math.max(1, line.words.length - 1)));
+          x += item.w + gap;
+        }
+      });
+      line.layout = rows.flat();
+      for (const item of line.layout) item.fired = elapsed >= item.t0;
+    }
+    function addGust(amount = rand(130, 260)) { gusts.push({ born: sceneTime, duration: rand(1.5, 2.8), amount }); }
+    function strike(x = rand(width * .12, width * .88), y = rand(height * .5, height * .9)) {
+      const points = [[x + rand(-width * .04, width * .04), -12]];
+      const count = 18, endX = x, endY = y;
+      for (let i = 1; i <= count; i++) {
+        const p = i / count;
+        points.push([points[0][0] + (endX - points[0][0]) * p + rand(-width * .025, width * .025), endY * p]);
+      }
+      points[points.length - 1] = [endX, endY];
+      const branches = [];
+      for (let b = 0; b < 4; b++) {
+        const at = Math.floor(rand(3, count - 2)), from = points[at];
+        const side = Math.random() < .5 ? -1 : 1;
+        branches.push([[from[0], from[1]], [from[0] + side * rand(45, 180), from[1] + rand(75, 220)], [from[0] + side * rand(90, 260), from[1] + rand(150, 320)]]);
+      }
+      bolts.push({ born: sceneTime, points, branches });
+      pulses.push({ born: sceneTime, amp: 1 });
+    }
+    function spawnSheets(count = 5) {
+      for (let i = 0; i < count; i++) debris.push({
+        kind: "sheet", x: -rand(60, 380) - i * 22, y: rand(height * .2, height * .9),
+        vx: rand(570, 980), vy: rand(-260, 110), w: rand(115, 210), h: rand(48, 88),
+        angle: rand(-1, 1), spin: rand(-5, 5), phase: rand(0, TAU), born: sceneTime
+      });
+    }
+    function spawnShards(count = 8) {
+      for (let i = 0; i < count; i++) debris.push({
+        kind: "shard", x: -rand(20, 260), y: rand(height * .2, height * .92),
+        vx: rand(430, 850), vy: rand(-340, 100), w: rand(12, 30), h: rand(7, 24),
+        angle: rand(0, TAU), spin: rand(-12, 12), phase: rand(0, TAU), born: sceneTime,
+        color: ["#46505f", "#536044", "#6b5740", "#67758a"][Math.floor(rand(0, 4))]
+      });
+    }
+    function spawnHeart() {
+      hearts.push({ x: rand(width * .22, width * .78), y: rand(height * .27, height * .76),
+        size: rand(32, 66), born: sceneTime, hit: sceneTime + rand(.8, 1.35), phase: rand(0, TAU) });
+    }
+    function triggerWord(word) {
+      const event = emphasis[norm(word)]?.event;
+      if (event === "strike") { strike(rand(width * .25, width * .75), rand(height * .55, height * .86)); addGust(260); spawnShards(10); }
+      if (event === "sheets") { spawnSheets(6); addGust(220); }
+      if (event === "gust") addGust(280);
+    }
+    function getWind() {
+      let value = 58 + 42 * Math.sin(sceneTime * .35) + 18 * Math.sin(sceneTime * 1.12);
+      gusts = gusts.filter(g => sceneTime - g.born < g.duration);
+      for (const g of gusts) {
+        const p = (sceneTime - g.born) / g.duration;
+        if (p >= 0) value += g.amount * Math.sin(Math.PI * clamp(p));
+      }
+      return value;
+    }
+    function drawClouds(dt) {
+      for (const c of clouds) {
+        c.x += (c.speed + wind * .12) * dt;
+        if (c.x - c.rx > width + 30) c.x = -c.rx - 30;
+        const tint = lerpColor(c.tone < .5 ? "#0b1222" : "#18233d", "#8ea5dc", flash * .35);
+        ctx.fillStyle = tint; ctx.globalAlpha = .68;
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.rx, c.ry, 0, 0, TAU); ctx.fill();
+        ctx.ellipse(c.x - c.rx * .42, c.y + c.ry * .18, c.rx * .58, c.ry * .78, 0, 0, TAU); ctx.fill();
+        ctx.ellipse(c.x + c.rx * .42, c.y + c.ry * .1, c.rx * .62, c.ry * .84, 0, 0, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    function drawRain(dt) {
+      ctx.lineCap = "round";
+      for (const d of rain) {
+        const vx = (wind + 35) * d.layer;
+        d.x += vx * dt; d.y += d.speed * dt;
+        if (d.y > height + d.len) { d.y = -rand(0, height * .25); d.x = rand(-width * .2, width); }
+        if (d.x > width + 80) d.x = -80;
+        const alpha = d.alpha + flash * .35;
+        ctx.strokeStyle = `rgba(171,195,235,${alpha})`;
+        ctx.lineWidth = d.layer > 1 ? 1.5 : .8;
+        ctx.beginPath(); ctx.moveTo(d.x - vx * .025, d.y - d.len); ctx.lineTo(d.x, d.y); ctx.stroke();
+      }
+    }
+    function drawBolts() {
+      bolts = bolts.filter(b => sceneTime - b.born < .62);
+      for (const b of bolts) {
+        const age = sceneTime - b.born;
+        const flicker = age < .08 ? 1 : age < .15 ? .16 : Math.max(0, .78 - age * 1.15) * (.72 + .28 * Math.abs(Math.sin(age * 48)));
+        const path = pts => {
+          ctx.beginPath(); ctx.moveTo(...pts[0]);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(...pts[i]);
+          ctx.stroke();
+        };
+        ctx.save(); ctx.globalAlpha = flicker; ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.strokeStyle = "#6f93ff"; ctx.shadowColor = "#7496ff"; ctx.shadowBlur = 32; ctx.lineWidth = 25; path(b.points);
+        ctx.strokeStyle = "#f7f8ff"; ctx.shadowColor = "#e1eaff"; ctx.shadowBlur = 14; ctx.lineWidth = 4.5; path(b.points);
+        for (const branch of b.branches) {
+          ctx.strokeStyle = "#829eff"; ctx.shadowBlur = 17; ctx.lineWidth = 10; path(branch);
+          ctx.strokeStyle = "#f3f5ff"; ctx.shadowBlur = 8; ctx.lineWidth = 2; path(branch);
+        }
+        ctx.restore();
+      }
+    }
+    function drawDebris(dt) {
+      debris = debris.filter(d => d.x < width + 280 && d.y < height + 240 && sceneTime - d.born < 8);
+      for (const d of debris) {
+        const air = wind * 1.2;
+        d.x += (d.vx + air) * dt;
+        d.vy += (d.kind === "sheet" ? 330 : 620) * dt;
+        if (d.kind === "sheet") d.vy -= Math.abs(wind) * Math.sin(d.angle) * .22 * dt;
+        d.y += (d.vy + Math.sin(sceneTime * 5 + d.phase) * (d.kind === "sheet" ? 110 : 55)) * dt;
+        d.angle += (d.spin + Math.sin(sceneTime * 7 + d.phase) * 2) * dt;
+        const flip = Math.abs(Math.cos(sceneTime * (d.kind === "sheet" ? 4 : 6) + d.phase));
+        ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.angle); ctx.globalAlpha = .84;
+        if (d.kind === "sheet") {
+          const hh = d.h * (.25 + .75 * flip);
+          const light = lerpColor("#4a5565", "#c3cfdf", flip);
+          ctx.fillStyle = lerpColor(light, "#f5f8ff", flash * .8); ctx.strokeStyle = "#dbe3ef"; ctx.lineWidth = 1.7;
+          ctx.beginPath(); ctx.moveTo(-d.w / 2 + 8, -hh / 2); ctx.lineTo(d.w / 2 + 8, -hh / 2);
+          ctx.lineTo(d.w / 2 - 8, hh / 2); ctx.lineTo(-d.w / 2 - 8, hh / 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.strokeStyle = lerpColor("#556273", "#f7f8ff", flash * .75); ctx.lineWidth = 1.5;
+          for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * d.w * .23, -hh * .42); ctx.lineTo(i * d.w * .23, hh * .42); ctx.stroke(); }
+        } else {
+          ctx.fillStyle = lerpColor(d.color, "#edf3ff", flash * .7);
+          ctx.beginPath(); ctx.moveTo(-d.w / 2, d.h / 2); ctx.lineTo(d.w / 2, d.h / 4); ctx.lineTo(0, -d.h / 2); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+    function heartPath(size, split = 0) {
+      const s = size;
+      ctx.beginPath();
+      if (!split) {
+        ctx.moveTo(0, s * .35); ctx.bezierCurveTo(-s * .9, -s * .1, -s * .45, -s * .75, 0, -s * .36);
+        ctx.bezierCurveTo(s * .48, -s * .78, s * .92, -s * .12, 0, s * .35);
+      } else if (split < 0) {
+        ctx.moveTo(0, s * .35); ctx.lineTo(-s * .04, s * .1); ctx.lineTo(s * .05, -s * .06); ctx.lineTo(-s * .05, -s * .22);
+        ctx.bezierCurveTo(-s * .42, -s * .57, -s * .66, -s * .27, 0, -s * .36);
+      } else {
+        ctx.moveTo(0, s * .35); ctx.lineTo(s * .04, s * .1); ctx.lineTo(-s * .05, -s * .06); ctx.lineTo(s * .05, -s * .22);
+        ctx.bezierCurveTo(s * .42, -s * .57, s * .66, -s * .27, 0, -s * .36);
+      }
+      ctx.closePath();
+    }
+    function drawHearts() {
+      hearts = hearts.filter(h => sceneTime - h.born < 4.5);
+      for (const h of hearts) {
+        const age = sceneTime - h.born, breaking = sceneTime > h.hit, hurt = sceneTime - h.hit;
+        const appear = cubicOut(age / .5), beat = 1 + .055 * Math.sin(age * 9) * (breaking ? 0 : 1);
+        const split = breaking ? cubicOut(hurt / 1.2) * h.size * .24 : 0;
+        const alpha = appear * (breaking ? clamp(1 - hurt / 3.2) : 1);
+        const fall = breaking ? hurt * hurt * 30 : 0;
+        ctx.save(); ctx.globalAlpha = alpha; ctx.translate(h.x, h.y + fall); ctx.scale(h.size / 2 * beat, h.size / 2 * beat);
+        ctx.fillStyle = lerpColor("#a41432", "#ff7794", flash * .55); ctx.strokeStyle = "#ff9bad"; ctx.lineWidth = 1.8;
+        for (const side of [-1, 1]) {
+          ctx.save(); ctx.translate(side * split, 0); ctx.rotate(side * (breaking ? .25 * cubicOut(hurt / 1.2) : 0));
+          heartPath(1, breaking ? side : 0); ctx.fill(); ctx.stroke(); ctx.restore();
+        }
+        ctx.restore();
+      }
+    }
+    function drawLyrics() {
+      for (const line of lines) {
+        if (elapsed < line.start || elapsed > line.start + line.slot + 1.9) continue;
+        const outStart = line.start + line.slot - .9;
+        for (const item of line.layout) {
+          if (elapsed < item.t0) continue;
+          const e = cubicOut((elapsed - item.t0) / 1.12);
+          const o = Math.pow(clamp((elapsed - outStart - (item.i % 3) * .12) / 1.45), 3);
+          if (o >= 1) continue;
+          const a = e * (1 - o), pulse = Math.sin((elapsed - item.t0) * 4.2 + item.i) * 2.2 * e * (1 - o);
+          const x = item.x - (1 - e) * 46 + o * (item.i % 2 ? 240 : -240) + pulse;
+          const y = item.y + (1 - e) * 8 + o * (item.i % 2 ? -40 : 50) - Math.abs(pulse) * .6;
+          const angle = ((item.i % 3) - 1) * 1.1 + o * ((item.i % 2) ? 12 : -12);
+          const baseColor = item.key?.color || palette.text;
+          const glowColor = item.key?.glow;
+          const glowPulse = .78 + .12 * (.5 + .5 * Math.sin((elapsed - item.t0) * 4.2 + item.i));
+          ctx.save(); ctx.translate(x, y); ctx.rotate(angle * Math.PI / 180); ctx.globalAlpha = a;
+          ctx.font = `${item.key ? 720 : 560} italic ${item.size}px Montserrat, "Segoe UI", sans-serif`;
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          if (glowColor) { ctx.shadowColor = glowColor; ctx.shadowBlur = 22 * glowPulse; }
+          ctx.fillStyle = palette.shadow; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4; ctx.fillText(item.word, 0, 0);
+          ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+          ctx.fillStyle = lerpColor(baseColor, "#ffffff", flash * .34); ctx.fillText(item.word, 0, 0);
+          ctx.restore();
+          if (item.key?.event && !item.fired) { item.fired = true; triggerWord(item.word); }
+        }
+      }
+    }
+    function updateClock() {
+      elapsedLabel.textContent = formatTime(elapsed);
+      if (document.activeElement !== seek) seek.value = String(elapsed);
+      playButton.textContent = playing ? "Ⅱ Pause" : elapsed >= totalDuration ? "▶ Replay" : "▶ Play";
+      playButton.setAttribute("aria-label", playing ? "Pause animation" : "Play animation");
+    }
+    function setElapsed(value) {
+      elapsed = clamp(value, 0, totalDuration);
+      for (const line of lines) {
+        line.fired = elapsed >= line.start;
+        for (const item of line.layout) item.fired = elapsed >= item.t0;
+      }
+      updateClock();
+    }
+    function frame(now) {
+      const dt = Math.min(.05, lastFrame ? (now - lastFrame) / 1000 : 0); lastFrame = now; sceneTime += dt;
+      if (playing) {
+        elapsed = Math.min(totalDuration, elapsed + dt);
+        if (elapsed >= totalDuration) playing = false;
+        for (const line of lines) {
+          if (!line.fired && elapsed >= line.start) {
+            line.fired = true; spawnHeart();
+            if (line.words.some(word => norm(word) === "bagyo")) { spawnHeart(); spawnHeart(); }
+          }
+        }
+        if (sceneTime >= nextStrike && elapsed < totalDuration) {
+          strike(); nextStrike = sceneTime + rand(3.6, 7.2);
+        }
+      } else {
+        for (const line of lines) if (line.start > elapsed) line.fired = false;
+      }
+      wind = getWind();
+      pulses = pulses.filter(p => sceneTime - p.born < 1.1);
+      flash = pulses.reduce((value, p) => Math.max(value, p.amp * Math.exp(-(sceneTime - p.born) * 5.6)), 0);
+      ctx.clearRect(0, 0, width, height);
+      const sky = ctx.createLinearGradient(0, 0, 0, height);
+      sky.addColorStop(0, lerpColor("#090d1d", "#182647", flash * .65));
+      sky.addColorStop(.56, lerpColor("#11182a", "#233153", flash * .4));
+      sky.addColorStop(1, lerpColor("#10131f", "#19233b", flash * .3));
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, width, height);
+      drawClouds(dt); drawRain(dt); drawBolts(); drawDebris(dt); drawHearts(); drawLyrics(); updateClock();
+      requestAnimationFrame(frame);
+    }
+    function togglePlay() {
+      if (elapsed >= totalDuration) setElapsed(0);
+      playing = !playing;
+      updateClock();
+    }
+    playButton.addEventListener("click", togglePlay);
+    restartButton.addEventListener("click", () => { setElapsed(0); playing = true; });
+    seek.addEventListener("input", () => {
+      setElapsed(Number(seek.value));
+    });
+    window.addEventListener("keydown", event => {
+      if (event.code === "Space" && !["INPUT", "BUTTON"].includes(document.activeElement?.tagName)) { event.preventDefault(); togglePlay(); }
+      if (event.key.toLowerCase() === "r") { setElapsed(0); playing = true; }
+    });
+    window.addEventListener("resize", resize);
+    resize(); updateClock(); requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>
